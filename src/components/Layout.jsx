@@ -3,6 +3,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Home from "./Home";
 import { useState } from "react";
+import bg from '../assets/bvsBackground.jpg'
 
 export default function Layout() {
   const [activeComponent, setActiveComponent] = useState(null);
@@ -18,7 +19,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="bg-cover bg-center bg-fixed min-h-screen" style={{ backgroundImage: "url('/src/assets/bvsBackground.jpg')" }}>
+    <div className="bg-cover bg-center bg-fixed min-h-screen" style={{ backgroundImage: `url(${bg})` }}>
       <div className="relative flex w-full h-full">
         <div className={`fixed h-screen z-20 transition-all duration-300 ${sidebarToggle ? "w-64" : "w-0"}`}>
           <Sidebar

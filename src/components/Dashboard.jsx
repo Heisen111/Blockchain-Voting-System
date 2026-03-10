@@ -17,16 +17,12 @@ export default function Dashboard({ contract }) {
         voteCount: Number(c.voteCount),
       }));
       setCandidates(formatted);
-
-      const votes = formatted.reduce((sum, c) => sum + c.voteCount, 0);
-      setTotalVotes(votes);
+      setTotalVotes(formatted.reduce((sum, c) => sum + c.voteCount, 0));
 
       const deployTime = Number(await contract.deployTime());
       const votingPeriod = Number(await contract.votingPeriod());
-      const endTime = deployTime + votingPeriod;
       const now = Math.floor(Date.now() / 1000);
-      setElectionEnded(now > endTime);
-
+      setElectionEnded(now > deployTime + votingPeriod);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -34,7 +30,6 @@ export default function Dashboard({ contract }) {
     }
   };
 
-  // countdown timer
   useEffect(() => {
     if (!contract) return;
     fetchData();
@@ -50,7 +45,6 @@ export default function Dashboard({ contract }) {
         if (diff <= 0) {
           setElectionEnded(true);
           setTimeRemaining('00:00:00');
-          clearInterval(interval);
         } else {
           const h = Math.floor(diff / 3600);
           const m = Math.floor((diff % 3600) / 60);
@@ -61,7 +55,6 @@ export default function Dashboard({ contract }) {
           setElectionEnded(false);
         }
 
-        // refresh votes every tick too
         const allCandidates = await contract.getAllCandidates();
         const formatted = allCandidates.map(c => ({
           id: Number(c.id),
@@ -77,10 +70,6 @@ export default function Dashboard({ contract }) {
 
     return () => clearInterval(interval);
   }, [contract]);
-
-  const topCandidate = candidates.length > 0
-    ? candidates.reduce((a, b) => a.voteCount > b.voteCount ? a : b)
-    : null;
 
   const maxVotes = candidates.length > 0 ? Math.max(...candidates.map(c => c.voteCount)) : 0;
 
@@ -102,12 +91,26 @@ export default function Dashboard({ contract }) {
 
   return (
     <div className="px-5 py-8 max-w-6xl mx-auto min-h-screen">
-      <h1 className="text-3xl md:text-4xl font-bold text-accent mb-6 md:mb-8 text-center">Dashboard</h1>
+      <h1 className="text-3xl md:text-4xl font-bold text-accent mb-2 text-center">Live Dashboard</h1>
+      <p className="text-accent/60 text-center text-sm mb-6">
+        {electionEnded
+          ? 'Election has ended. Visit Results page for the final declaration.'
+          : 'Live monitoring — updates every second during the election.'}
+      </p>
+
+      {/* ── Election Ended Banner ── */}
+      {electionEnded && (
+        <div className="border-2 border-highlight rounded-lg p-4 mb-6 text-center">
+          <p className="text-accent text-lg">
+            Election has ended. View the official declaration on the{' '}
+            <span className="text-highlight font-semibold">Results</span> page.
+          </p>
+        </div>
+      )}
 
       {/* ── Stats Cards ── */}
       <div className="w-full border-2 border-highlight rounded-lg p-6 mb-8 transition-all duration-300">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-
           <div className="border-b border-highlight/50 hover:bg-accent/5 transition-all duration-200 p-4 text-center">
             <h3 className="text-xl md:text-2xl font-semibold text-accent">Total Candidates</h3>
             <p className="text-lg md:text-xl text-accent mt-2">{candidates.length}</p>
@@ -128,18 +131,16 @@ export default function Dashboard({ contract }) {
           <div className="border-b border-highlight/50 hover:bg-accent/5 transition-all duration-200 p-4 text-center">
             <h3 className="text-xl md:text-2xl font-semibold text-accent">Election Status</h3>
             <p className={`text-lg md:text-xl mt-2 ${electionEnded ? 'text-accent' : 'text-highlight'}`}>
-              {electionEnded ? 'Ended' : 'Active'}
+              {electionEnded ? 'Ended' : '● Active'}
             </p>
           </div>
-
         </div>
       </div>
 
       {/* ── Live Leaderboard ── */}
       <div className="w-full border-2 border-highlight rounded-lg p-6 transition-all duration-300">
-        <h2 className="text-xl md:text-2xl font-semibold text-accent mb-6 text-center">
-          {electionEnded ? 'Final Results' : 'Live Leaderboard'}
-        </h2>
+        <h2 className="text-xl md:text-2xl font-semibold text-accent mb-2 text-center">Live Leaderboard</h2>
+        <p className="text-accent/60 text-sm text-center mb-6">Rankings update in real time as votes come in</p>
 
         {candidates.length === 0 ? (
           <p className="text-accent text-center py-6">No candidates registered yet.</p>
@@ -151,9 +152,7 @@ export default function Dashboard({ contract }) {
                 const percentage = totalVotes > 0
                   ? ((candidate.voteCount / totalVotes) * 100).toFixed(1)
                   : 0;
-                const barWidth = maxVotes > 0
-                  ? (candidate.voteCount / maxVotes) * 100
-                  : 0;
+                const barWidth = maxVotes > 0 ? (candidate.voteCount / maxVotes) * 100 : 0;
                 const isLeading = candidate.voteCount === maxVotes && maxVotes > 0;
 
                 return (
@@ -173,7 +172,6 @@ export default function Dashboard({ contract }) {
                         <span className="text-sm ml-1">votes ({percentage}%)</span>
                       </div>
                     </div>
-                    {/* progress bar */}
                     <div className="w-full bg-accent/10 rounded-full h-2">
                       <div
                         className="bg-highlight h-2 rounded-full transition-all duration-500"
@@ -186,16 +184,8 @@ export default function Dashboard({ contract }) {
           </div>
         )}
 
-        {electionEnded && topCandidate && totalVotes > 0 && (
-          <div className="mt-8 text-center border-t border-highlight/30 pt-6">
-            <p className="text-accent text-lg">Winner</p>
-            <p className="text-highlight text-2xl md:text-3xl font-bold mt-1">{topCandidate.name}</p>
-            <p className="text-accent mt-1">{topCandidate.voteCount} votes</p>
-          </div>
-        )}
-
         {!electionEnded && totalVotes === 0 && (
-          <p className="text-accent text-center py-4 text-sm">Waiting for votes...</p>
+          <p className="text-accent text-center py-4 text-sm">Waiting for first vote...</p>
         )}
       </div>
     </div>
